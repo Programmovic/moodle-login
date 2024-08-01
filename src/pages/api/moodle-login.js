@@ -73,7 +73,7 @@ export default async function handler(req, res) {
 }
 
 // Helper function to wait until the logintoken is defined
-function waitForToken(predicate, timeout = 5000) {
+function waitForToken(predicate, timeout = 10000) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
 
