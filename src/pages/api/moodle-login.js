@@ -1,8 +1,11 @@
+// pages/api/moodle-login.js
+
 import cheerio from 'cheerio';
 import axios from 'axios';
 import { CookieJar } from 'tough-cookie';
 import { wrapper } from 'axios-cookiejar-support';
 
+// Create a new CookieJar and wrap axios with it
 const jar = new CookieJar();
 const client = wrapper(axios.create({ jar }));
 
@@ -20,7 +23,10 @@ export default async function handler(req, res) {
       const loginPageResponse = await client.get(loginUrl);
 
       const $ = cheerio.load(loginPageResponse.data);
-      const logintoken = $('input[name="logintoken"]').val();
+      let logintoken = $('input[name="logintoken"]').val();
+      
+      // Wait for the logintoken to be defined
+      await waitForToken(() => logintoken);
 
       if (!logintoken) {
         throw new Error('Logintoken not found');
@@ -64,4 +70,24 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['POST']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
+}
+
+// Helper function to wait until the logintoken is defined
+function waitForToken(predicate, timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+
+    const checkToken = () => {
+      const token = predicate();
+      if (token) {
+        resolve();
+      } else if (Date.now() - startTime > timeout) {
+        reject(new Error('Timeout waiting for logintoken'));
+      } else {
+        setTimeout(checkToken, 100); // Check every 100ms
+      }
+    };
+
+    checkToken();
+  });
 }
