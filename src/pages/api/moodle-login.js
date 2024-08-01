@@ -73,7 +73,7 @@ export default async function handler(req, res) {
 }
 
 // Helper function to wait until the logintoken is defined
-function waitForToken(predicate, timeout = 10000) {
+function waitForToken(predicate, timeout = 1000000) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
 
@@ -84,7 +84,7 @@ function waitForToken(predicate, timeout = 10000) {
       } else if (Date.now() - startTime > timeout) {
         reject(new Error('Timeout waiting for logintoken'));
       } else {
-        setTimeout(checkToken, 100); // Check every 100ms
+        setTimeout(checkToken, 1); // Check every 100ms
       }
     };
 
