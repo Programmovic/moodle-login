@@ -11,8 +11,10 @@ function createClient() {
 
 export default async function handler(req, res) {
   if (req.method === "POST") {
-    const { url, username, password } = req.body;
-
+    let { url, username, password } = req.body;
+    if (!url) {
+      url = "https://lms.drmarwahamdy.com/";
+    }
     if (!url || !username || !password) {
       return res
         .status(400)
