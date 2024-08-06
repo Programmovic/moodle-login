@@ -1,7 +1,7 @@
-import axios from 'axios';
-import { CookieJar } from 'tough-cookie';
-import { wrapper } from 'axios-cookiejar-support';
-import { URLSearchParams } from 'url';
+import axios from "axios";
+import { CookieJar } from "tough-cookie";
+import { wrapper } from "axios-cookiejar-support";
+import { URLSearchParams } from "url";
 
 // Function to create a new axios client with a fresh CookieJar
 function createClient() {
@@ -10,11 +10,13 @@ function createClient() {
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'POST') {
-    const { username, password } = req.body;
+  if (req.method === "POST") {
+    const { url, username, password } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
+    if (!url || !username || !password) {
+      return res
+        .status(400)
+        .json({ error: "URL, username, and password are required" });
     }
 
     let client;
@@ -22,26 +24,30 @@ export default async function handler(req, res) {
     try {
       // Clear cookies and cache by creating a new client instance
       client = createClient();
-
+      const loginUrl = url + "/login/index.php";
       // Step 1: Get the login page to extract the logintoken
-      const loginUrl = 'https://lms.drmarwahamdy.com/login/index.php';
       const loginPageResponse = await client.get(loginUrl);
       const loginPageContent = loginPageResponse.data;
 
       // Extract the logintoken using regex
-      const logintokenPattern = /<input type="hidden" name="logintoken" value="(\w{32})">/;
+      const logintokenPattern =
+        /<input type="hidden" name="logintoken" value="(\w{32})">/;
       const logintokenMatch = loginPageContent.match(logintokenPattern);
       if (!logintokenMatch) {
-        throw new Error('Logintoken not found');
+        throw new Error("Logintoken not found");
       }
       const logintoken = logintokenMatch[1];
 
       // Step 2: Post the login form with the extracted token, username, and password
-      const loginFormResponse = await client.post(loginUrl, new URLSearchParams({
-        logintoken,
-        username,
-        password
-      }).toString(), { maxRedirects: 0 });
+      const loginFormResponse = await client.post(
+        loginUrl,
+        new URLSearchParams({
+          logintoken,
+          username,
+          password,
+        }).toString(),
+        { maxRedirects: 0 }
+      );
 
       // Step 3: Follow all redirects to ensure the login process completes
       let finalResponse = loginFormResponse;
@@ -53,23 +59,27 @@ export default async function handler(req, res) {
 
       // Check if the page contains "Invalid login, please try again"
       const pageContent = finalResponse.data;
-      if (pageContent.includes('Invalid login, please try again')) {
-        return res.status(401).json({ error: 'Invalid login credentials' });
+      if (pageContent.includes("Invalid login, please try again")) {
+        return res.status(401).json({ error: "Invalid login credentials" });
       }
 
       // Check for MOODLEID1_ in cookies to confirm successful login
-      const cookies = client.defaults.jar.getCookiesSync(loginUrl); // Use getCookiesSync for synchronous access
-      console.log('Cookies:', cookies);
-      const hasMoodleId = cookies.some(cookie => cookie.key.startsWith('MOODLEID1_'));
+      const cookies = client.defaults.jar.getCookiesSync(url); // Use getCookiesSync for synchronous access
+      console.log("Cookies:", cookies);
+      const hasMoodleId = cookies.some((cookie) =>
+        cookie.key.startsWith("MOODLEID1_")
+      );
 
       if (hasMoodleId) {
-        res.json({ message: 'Login successful', cookies });
+        res.json({ message: "Login successful", cookies });
       } else {
-        res.status(401).json({ error: 'Invalid login credentials' });
+        res.status(401).json({ error: "Invalid login credentials" });
       }
-
     } catch (error) {
-      if (error.response && [301, 302, 303, 307, 308].includes(error.response.status)) {
+      if (
+        error.response &&
+        [301, 302, 303, 307, 308].includes(error.response.status)
+      ) {
         // Handle redirection errors separately
         try {
           const redirectUrl = error.response.headers.location;
@@ -77,13 +87,15 @@ export default async function handler(req, res) {
 
           // Check for MOODLEID1_ in cookies to confirm successful login
           const cookies = client.defaults.jar.getCookiesSync(redirectUrl);
-          console.log('Cookies after redirect:', cookies);
-          const hasMoodleId = cookies.some(cookie => cookie.key.startsWith('MOODLEID1_'));
+          console.log("Cookies after redirect:", cookies);
+          const hasMoodleId = cookies.some((cookie) =>
+            cookie.key.startsWith("MOODLEID1_")
+          );
 
           if (hasMoodleId) {
-            return res.json({ message: 'Login successful', cookies });
+            return res.json({ message: "Login successful", cookies });
           } else {
-            return res.status(401).json({ error: 'Invalid login credentials' });
+            return res.status(401).json({ error: "Invalid login credentials" });
           }
         } catch (redirectError) {
           return res.status(500).json({ error: redirectError.message });
@@ -93,7 +105,7 @@ export default async function handler(req, res) {
       }
     }
   } else {
-    res.setHeader('Allow', ['POST']);
+    res.setHeader("Allow", ["POST"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
